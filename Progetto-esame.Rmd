@@ -1,0 +1,580 @@
+---
+title: "Progetto esame"
+author: "Alessandro Relato"
+date: '2022-05-30'
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunck_output_type: inline
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	cahce = TRUE,
+	max.print = 10
+)
+tinytex::install_tinytex()
+```
+
+# Project for the Data Science Exam
+
+## The choice of the project
+
+I wanted to create a project about something that I like and topics have narrowed down to videogames and motorsports.
+Then I started to search something about videogames and i found this dataset on [kaggle](https://www.kaggle.com/) about League of Legends (a game that I started to play recently and I loved from the beginning).
+The dataset includes information about eSport games of 3 years, from 2015 to 2017.
+
+Afetrwards I thought which one coul be the aim of my analysis and, watching this year MSI (Mid Season Invitational), it came to my mind the possibility to analyze how much impact have first Blood, first Dragon, first Baron Nashor and game side (blue or red) on the victory.
+Watching the MSI I also realized how much small pros' champion pools are.
+So I decided to analyze the percentage of presence of the champions that has been used in that three years.
+
+## Project development
+
+First of all, I imported all the libraries that i will need and all the datasets.
+Then I used the command **View** to see how the datasets are organised.
+The datasets are saved in this [Google Drive Directory](https://drive.google.com/drive/folders/1wfZYNIUWGCITyLbWlMhRsVFUxigodNuY?usp=sharing)
+
+```{r echo=TRUE}
+library(tidyr)
+library(datasets)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(plyr)
+library(stringr)
+
+bans = read.csv("dataset/bans.csv")
+#View(bans)
+
+gold = read.csv("dataset/gold.csv")
+#View(gold)
+
+kills = read.csv("dataset/kills.csv")
+#View(kills)
+
+matchinfo = read.csv("dataset/matchinfo.csv")
+#View(matchinfo)
+
+monsters = read.csv("dataset/monsters.csv")
+#View(monsters)
+
+structures = read.csv("dataset/structures.csv")
+#View(structures)
+
+```
+
+## Tidy and trasform datasets
+
+### Working on the base table
+
+Firstly, I had to organize data that I needed to work on in only one dataset: I chose the table *matchinfo* as base because it was the table with the most number of variables that I needed and the least number of variables that I had to remove.
+So I used **select** to maintain only the columns I wanted, furthermore I create a new column named *Result* that has the same value of *bResult* and it symbolizes the winning team (if blue team won it has value 1, instead if red team won the value is 0).
+
+```{r echo=TRUE}
+
+interestingData = matchinfo %>%
+  mutate(Result = bResult) %>%
+  select(Address, League, Season, Type, blueTeamTag, redTeamTag, Result, blueTopChamp, blueJungleChamp, blueMiddleChamp, blueADCChamp, blueSupportChamp, redTopChamp, redJungleChamp, redMiddleChamp, redADCChamp, redSupportChamp)
+interestingData
+
+```
+
+### Working on other tables
+
+Once that I cleaned the *mathinfo* table and put it in the new one called *interestingData*, it was time to tidy the other tables to let them fit in the base one.
+
+#### Bans table
+
+I started with *bans* table.
+I created one new table, for the red bans and in the original one I took only the blue ones; then I use **inner_join** to merge them in only one table.
+I chose inner_join to make sure that every game is present in the new table.
+Doing that allowed me to have all the bans of one game in only one line.
+
+```{r echo=TRUE}
+
+redBans = bans %>%
+  filter(Team == "redBans")
+
+bans = bans %>%
+  filter(Team == "blueBans")
+
+bans = bans %>%
+  inner_join(redBans, by = "Address")
+bans
+```
+
+#### Kills table
+
+The next table I arranged was the kills one.
+This table had a line for kill and it had some columns that I didn't need, so I decided to create two new tables (*rKills* for the kills of the red team and *bKills* for the kills of the blue team).
+In every one of this new tables I divided the data in groups by the column *Address* that represents the address of the game in an old website where there were saved all the stats of every eSport game.
+Then I took only the first kill made by that team in every game and put the time of the kill in a new column.
+After that I used again a **join** to create a new table in which every line represents only one game.
+At the end I checked which team killed first and I created a new to column to save which team conquered the First Blood.
+
+```{r echo=TRUE}
+
+redKills = kills %>%
+  filter(Team == "rKills") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstBloodr = Time)
+
+
+blueKills = kills %>%
+  filter(Team == "bKills" && Victim != "TooEarly") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstBloodb = Time)
+
+kills = full_join(blueKills, redKills, by="Address") %>%
+  select(Address, TimeFirstBloodb, TimeFirstBloodr) %>%
+  mutate(FirstBlood = "x")
+
+for(i in 1:nrow(kills)) {
+  if(is.na(kills$TimeFirstBloodb[[i]])) {
+    kills$FirstBlood[[i]]="Red"
+  } else if(is.na(kills$TimeFirstBloodr[[i]])) {
+    kills$FirstBlood[[i]]="Blue"
+  } else if(kills$TimeFirstBloodb[[i]] > kills$TimeFirstBloodr[[i]]) {
+    kills$FirstBlood[[i]]="Red"
+  } else if (kills$TimeFirstBloodb[[i]] < kills$TimeFirstBloodr[[i]]){
+    kills$FirstBlood[[i]]="Blue"
+  }
+}
+
+kills = select(kills, Address, FirstBlood)
+kills
+```
+
+#### Monsters tables
+
+The last group of tables to tidy is the monsters one.
+To do that I repeated the operations done to clean up the table *kills* for every monster in analysis (First Dragon and First Baron).
+At the end of these code lines, I will have two tables, *dragons* and *barons*.
+In every one of them there is on line for game and the variables are *Address* and *FirstDragon*/*FirstBaron*.
+
+```{r echo=TRUE}
+
+dragonsBlue = monsters %>%
+  filter(Team == "bDragons") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstDragonb = Time)
+
+dragonsRed = monsters %>%
+  filter(Team == "rDragons") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstDragonr = Time)
+
+dragons = full_join (dragonsRed, dragonsBlue, by="Address") %>%
+  select(Address, TimeFirstDragonb, TimeFirstDragonr) %>%
+  mutate(FirstDragon = "x")
+
+for(i in 1:nrow(dragons)) {
+  if(is.na(dragons$TimeFirstDragonb[[i]])) {
+    dragons$FirstDragon[[i]]="Red"
+  } else if(is.na(dragons$TimeFirstDragonr[[i]])) {
+    dragons$FirstDragon[[i]]="Blue"
+  } else if(dragons$TimeFirstDragonb[[i]] > dragons$TimeFirstDragonr[[i]]) {
+    dragons$FirstDragon[[i]]="Red"
+  } else if (dragons$TimeFirstDragonb[[i]] < dragons$TimeFirstDragonr[[i]]){
+    dragons$FirstDragon[[i]]="Blue"
+  }
+}
+
+dragons = select(dragons, Address, FirstDragon)
+dragons
+```
+
+```{r echo=TRUE}
+
+baronBlue = monsters %>%
+  filter(Team == "bBarons") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstBaronb = Time)
+
+baronRed = monsters %>%
+  filter(Team == "rBarons") %>%
+  group_by(Address) %>%
+  filter(row_number()==1) %>%
+  mutate(TimeFirstBaronr = Time)
+
+barons = full_join (baronRed, baronBlue, by="Address") %>%
+  select(Address, TimeFirstBaronb, TimeFirstBaronr) %>%
+  mutate(FirstBaron = "x")
+
+for(i in 1:nrow(barons)) {
+  if(is.na(barons$TimeFirstBaronb[[i]])) {
+    barons$FirstBaron[[i]]="Red"
+  } else if(is.na(barons$TimeFirstBaronr[[i]])) {
+    barons$FirstBaron[[i]]="Blue"
+  } else if(barons$TimeFirstBaronb[[i]] > barons$TimeFirstBaronr[[i]]) {
+    barons$FirstBaron[[i]]="Red"
+  } else if (barons$TimeFirstBaronb[[i]] < barons$TimeFirstBaronr[[i]]){
+    barons$FirstBaron[[i]]="Blue"
+  }
+}
+barons = select(barons, Address, FirstBaron)
+barons
+```
+
+#### Uniting the tables
+
+The only thing to do now is to gather the tables that I have just fixed up in the base table *interestingData*.
+To do that I used again a **join** and then I changed the names of the columns properly.
+
+```{r echo=TRUE}
+
+interestingData = interestingData %>%
+  full_join(bans, by="Address") %>%
+  full_join(kills, by="Address") %>%
+  full_join(dragons, by="Address") %>%
+  full_join(barons, by="Address")
+
+interestingData = rename(interestingData,
+  c("ban_1.x" = "blueBan_1",
+         "ban_2.x" = "blueBan_2",
+         "ban_3.x" = "blueBan_3",
+         "ban_4.x" = "blueBan_4",
+         "ban_5.x" = "blueBan_5",
+         "ban_1.y" = "redBan_1",
+         "ban_2.y" = "redBan_2",
+         "ban_3.y" = "redBan_3",
+         "ban_4.y" = "redBan_4",
+         "ban_5.y" = "redBan_5"))
+
+interestingData = select(interestingData, League, Season, Type, blueTeamTag, redTeamTag, Result, blueTopChamp, blueJungleChamp, blueMiddleChamp, blueADCChamp, blueSupportChamp, redTopChamp, redJungleChamp, redMiddleChamp, redADCChamp, redSupportChamp, blueBan_1, blueBan_2, blueBan_3, blueBan_4, blueBan_5, redBan_1, redBan_2, redBan_3, redBan_4, redBan_5, FirstBlood, FirstDragon, FirstBaron)
+interestingData
+
+```
+
+## The anlysis
+
+### First Blood impact
+
+After I put in order data, it's time to start doing the analysis.
+The first thing I analysed is how much influence has the First Blood on the victory.
+To do this I use a **for** to count how many times the team that drawned the First Blood also won the game.
+The result is expressed both in th absolute value and percentage.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(interestingData$FirstBlood[[i]]=="Blue" && interestingData$Result[[i]]==1) {
+    conta=conta+1;
+  } else if (interestingData$FirstBlood[[i]]=="Red" && interestingData$Result[[i]]==0) {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+As we can see from the result, the team that conquests the First Blood then wins 4690 times on 7620 total games (61,4%).
+That percentage can make us realize how important is the First Blood in the competitive games of League of Legends.
+
+### First Drake and Baron impact
+
+Let's analyse the impact of First Drake and First Baron on the victory.
+The operations are the same of the ones for the First Blood.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$FirstDragon[[i]])) {
+  } else if(interestingData$FirstDragon[[i]]=="Blue" && interestingData$Result[[i]]==1) {
+    conta=conta+1;
+  } else if (interestingData$FirstDragon[[i]]=="Red" && interestingData$Result[[i]]==0) {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$FirstBaron[[i]])) {
+  } else if(interestingData$FirstBaron[[i]]=="Blue" && interestingData$Result[[i]]==1) {
+    conta=conta+1;
+  } else if (interestingData$FirstBaron[[i]]=="Red" && interestingData$Result[[i]]==0) {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+Looking at the results it's easy to see that the First Dragon has an impact smaller than the First Blood (58,7%) and this is explainable because the most important buff that Drakes give is the Soul.
+The Soul is a buff that a team obtains after it slays four Drakes, so even if one team doesn't take the First one it's not a problem because there are other Drakes that can be slayed every 6 minutes.
+On the other hand there is the Baron that has a huge impact on the victory (79%).
+That was easily predictable because the Baron is a monster that gives an iportant buff to the team that kills it and it spawns later in the game (the first one spawn at minute 20).
+These two aspects, combined to the difficulty of taking down this objective, make teams wait until the moment that they have a big advantage before they slay the Baron.
+Waiting so much let the difference between the teams grow and when the Baron is dead, the game is already in one team's hands.
+
+### game side impact
+
+The next step is to analyse how much impact has the game side on the victory and on the other variables (First Blood, First Dragon and First Baron).
+To do this I will count, using **for** again, how many times variables previously announced have the value *Blue* (or *1* in the case of the First Blood).
+Then the results for the red side will be complementary.
+I'm going to expect a bigger impact of the blue side because there has always been said that the team that plays from the blue side is benefites, even if the the advantage isn't huge.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$Result[[i]])) {
+  } else if(interestingData$Result[[i]]==1) {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+In line with what I expected the blue side has a victory percentage little bigger than the red one (54,4% vs 45,6%).
+Probably the advantage is determined by the draft phase (the one when player choose their champions) because the blue team starts banning and picking before the red one and can choose or ban the most powerful champions.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$FirstBlood[[i]])) {
+  } else if(interestingData$FirstBlood[[i]]=="Blue") {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+Also the First Blood respects the expectation, even if the percentage is much closer (51% blue side, 49% red side).
+Maybe the reason is the same, but reverse, of the previous analysis, in fact the red team, picking the champions after the blue team, can counter-pick.
+This means that the red players has champions that can win almost easily the 1vs1 against the corresponding player of the blue team.
+This is a big advantage in early game, when there aren't so many resources in the field, but in the mid/late game the stronger champions have the upper hand also on their counters.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$FirstDragon[[i]])) {
+  } else if(interestingData$FirstDragon[[i]]=="Blue") {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+Contrary to the prediction, the First Dragon is mostly killed by the red team (53% red team vs 47% blue team).
+This nearly surprises me also seen the impact that the first Drake has on the victory, but considering the counter-pick stuff that i explained before this result becomes more understandable.
+
+```{r echo=TRUE}
+conta = 0;
+for(i in 1:nrow(interestingData)) {
+  if(is.na(interestingData$FirstBaron[[i]])) {
+  } else if(interestingData$FirstBaron[[i]]=="Blue") {
+    conta=conta+1;
+  }
+}
+percent=conta/nrow(interestingData)*100;
+percent
+conta
+```
+
+Last but not least, let's see the result of the analysis on the First baron.
+Maybe this is the most astonishing one: the red team has a higher probability to slay it than the blue team (48,5% blue team vs 51,5%).
+Although the difference is very very small, the impact of the First Baron on the final victory and the percentage of the wins by the blue team made me think that the Baron is killed mostly by blue team.
+
+## Second part of the project: Tidy and transform
+
+In the second part of the project I'm going to see how many times every champion is present in games.
+The idea is to see if also in 2015-2017 the champion pool of the pros is limited to few champions like it is nowadays.
+
+At first I have to know which champions have been used.
+To do that I saved the name of the champions that have been picked in an array, paying attention not to save them more then once.
+
+```{r echo=TRUE}
+nomi="";
+for(i in 1:nrow(interestingData)) {
+  if(!is.na(interestingData$blueTopChamp[[i]]) && !(interestingData$blueTopChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$blueTopChamp[[i]]);
+  }
+  if(!is.na(interestingData$blueJungleChamp[[i]]) && !(interestingData$blueJungleChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$blueJungleChamp[[i]]);
+  }
+  if(!is.na(interestingData$blueMiddleChamp[[i]]) && !(interestingData$blueMiddleChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$blueMiddleChamp[[i]]);
+  }
+  if(!is.na(interestingData$blueADCChamp[[i]]) && !(interestingData$blueADCChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$blueADCChamp[[i]]);
+  }
+  if(!is.na(interestingData$blueSupportChamp[[i]]) && !(interestingData$blueSupportChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$blueSupportChamp[[i]]);
+  }
+  if(!is.na(interestingData$redTopChamp[[i]]) && !(interestingData$redTopChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$redTopChamp[[i]]);
+  }
+  if(!is.na(interestingData$redJungleChamp[[i]]) && !(interestingData$redJungleChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$redJungleChamp[[i]]);
+  }
+  if(!is.na(interestingData$redMiddleChamp[[i]]) && !(interestingData$redMiddleChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$redMiddleChamp[[i]]);
+  }
+  if(!is.na(interestingData$redADCChamp[[i]]) && !(interestingData$redADCChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$redADCChamp[[i]]);
+  }
+  if(!is.na(interestingData$redSupportChamp[[i]]) && !(interestingData$redSupportChamp[[i]] %in% nomi)) {
+    nomi=c(nomi, interestingData$redSupportChamp[[i]]);
+  }
+}
+nomi=nomi[-1]
+```
+
+After that I did the same thing with the champions that have been banned and then I made a cross check to make sure that the array that will become a column of a new table has all the champions that have made an appearance.
+Then I create the new table *champions* and I add the column with the names.
+
+```{r echo=TRUE}
+ban="";
+for(i in 1:nrow(interestingData)) {
+  if(!is.na(interestingData$blueBan_1[[i]]) && !(interestingData$blueBan_1[[i]] %in% ban)) {
+    ban=c(ban, interestingData$blueBan_1[[i]]);
+  }
+  if(!is.na(interestingData$blueBan_2[[i]]) && !(interestingData$blueBan_2[[i]] %in% ban)) {
+    ban=c(ban, interestingData$blueBan_2[[i]]);
+  }
+  if(!is.na(interestingData$blueBan_3[[i]]) && !(interestingData$blueBan_3[[i]] %in% ban)) {
+    ban=c(ban, interestingData$blueBan_3[[i]]);
+  }
+  if(!is.na(interestingData$blueBan_4[[i]]) && !(interestingData$blueBan_4[[i]] %in% ban)) {
+    ban=c(ban, interestingData$blueBan_4[[i]]);
+  }
+  if(!is.na(interestingData$blueBan_5[[i]]) && !(interestingData$blueBan_5[[i]] %in% ban)) {
+    ban=c(ban, interestingData$blueBan_5[[i]]);
+  }
+  if(!is.na(interestingData$redBan_1[[i]]) && !(interestingData$redBan_1[[i]] %in% ban)) {
+    ban=c(ban, interestingData$redBan_1[[i]]);
+  }
+  if(!is.na(interestingData$redBan_2[[i]]) && !(interestingData$redBan_2[[i]] %in% ban)) {
+    ban=c(ban, interestingData$redBan_2[[i]]);
+  }
+  if(!is.na(interestingData$redBan_3[[i]]) && !(interestingData$redBan_3[[i]] %in% ban)) {
+    ban=c(ban, interestingData$redBan_3[[i]]);
+  }
+  if(!is.na(interestingData$redBan_4[[i]]) && !(interestingData$redBan_4[[i]] %in% ban)) {
+    ban=c(ban, interestingData$redBan_4[[i]]);
+  }
+  if(!is.na(interestingData$redBan_5[[i]]) && !(interestingData$redBan_5[[i]] %in% ban)) {
+    ban=c(ban, interestingData$redBan_5[[i]]);
+  }
+}
+ban=ban[-1];
+
+n=length(nomi)
+for(i in length(ban)) {
+  if(!(ban[i] %in% nomi)) {
+    nomi[n]=ban[i];
+    n=n+1;
+  }
+}
+
+champions = data.frame(nomi)
+#View(champions)
+```
+
+Once I created the table, I created two new columns (*pickRate* and *banRate*) in which I put the percentage of pick and ban.
+To make that appen I created a function that, given a value and a column, return how many times that value is present in that column.
+
+```{r echo=TRUE}
+checkFreq = function (x, y) {
+  conta=0;
+  for(i in 1:length(y)) {
+    if(y[[i]]==x) {
+      conta=conta+1;
+    }
+  }
+  conta;
+}
+
+pickrate=integer(length(nomi));
+for(i in 1:length(nomi)) {
+  conta=0
+  conta=conta+checkFreq(nomi[i], interestingData$blueTopChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$blueJungleChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$blueMiddleChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$blueADCChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$blueSupportChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$redTopChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$redJungleChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$redMiddleChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$redADCChamp)
+  conta=conta+checkFreq(nomi[i], interestingData$redSupportChamp)
+  pickrate[i] = (conta/nrow(interestingData))*100
+}
+champions = mutate(champions, pickRate=pickrate)
+
+banrate=integer(length(nomi));
+for(i in 1:length(nomi)) {
+  conta=0
+  conta=conta+checkFreq(nomi[i], interestingData$blueBan_1)
+  conta=conta+checkFreq(nomi[i], interestingData$blueBan_2)
+  conta=conta+checkFreq(nomi[i], interestingData$blueBan_3)
+  conta=conta+checkFreq(nomi[i], interestingData$blueBan_4)
+  conta=conta+checkFreq(nomi[i], interestingData$blueBan_5)
+  conta=conta+checkFreq(nomi[i], interestingData$redBan_1)
+  conta=conta+checkFreq(nomi[i], interestingData$redBan_2)
+  conta=conta+checkFreq(nomi[i], interestingData$redBan_3)
+  conta=conta+checkFreq(nomi[i], interestingData$redBan_4)
+  conta=conta+checkFreq(nomi[i], interestingData$redBan_5)
+  banrate[i] = (conta/nrow(interestingData))*100
+}
+champions = mutate(champions, banRate=banrate)
+```
+
+At this point the only thing that I hadn't done yet is to create the column *presence* in which there is the percentage of total presence (pick rate + ban rate) of the champion in the games of the period in analysis.
+After I created the column, I also sort the table in descending order of *presence*.
+
+```{r echo=TRUE}
+champions = champions %>%
+  mutate(presence=pickRate+banRate) %>%
+  arrange(-presence)
+champions
+```
+
+## Second part of the project: the analysis
+
+Now that the table is ready, I can go on with the analysis.
+Immediately catches the eye the fact that also in these years the champion pool is not bigger, in fact the first six champions of the table have a presence that exceeds the 40% of the total games (which mean that they were picked or banned in over 3048 games).
+This means that even if the analysis has a pool of 7620 games divided into three years, with a balance patch every two weeks and a big change of the game every end of the year, six champions have been played nearly for the half of the games.
+Even though there are all 140 champions that League had in that period, most of them have a percentage of presence very very low.
+To test that I created a new table *mostSeen* that is simply the table *champions* with a filter on the presence.
+The filter let go through only the lines that has a value of presence higher than 10.
+This value means that the champions in the new table have been seen for more than 254 games per year, wish is a insignificant number of games given that the total number of game sper year is 2540.
+The new table has only 64 lines, which means that only 64 champions reach that value of presence, against the 140 lines of the originaty *champions* table.
+
+```{r echo=TRUE}
+mostSeen = filter(champions, presence>10)
+mostSeen
+```
+
+## Conclusion
+
+In conclusion, these analysis shows how the professional League of Legends has some "rules" all his and how many things have to be studied in this world.
+In particular, the results have shown that the blue side has a small advantage on the victory, but on the other hand the red team has a small advantage on the objectives and First Blood.
+Furthermore the team that kills first has an higher probability to win like the team that slays the First Dragon.
+The team that takes down the First Baron has statistically an advantage that will lead them to win the game in the 80% of the times.
+Last but not least, the second analysis has shown that pro players tend to focus the practice to a very poor pool of champions, considering the large amount of champions that Riot created for league of Legends during the years.
+Moreover the result point out how difficult is for the proplayer to change their habits and learn some new champions to adapt the gameplay to the changes of the meta.
