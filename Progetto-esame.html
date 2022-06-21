@@ -1647,11 +1647,11 @@ pre code {
 <h2>The choice of the project</h2>
 <p>I wanted to create a project about something that I like and topics
 have narrowed down to videogames and motorsports. Then I started to
-search something about videogames and i found this dataset on <a href="https://www.kaggle.com/">kaggle</a> about League of Legends (a
+search something about videogames and I found this dataset on <a href="https://www.kaggle.com/">kaggle</a> about League of Legends (a
 game that I started to play recently and I loved from the beginning).
 The dataset includes information about eSport games of 3 years, from
 2015 to 2017.</p>
-<p>Afetrwards I thought which one coul be the aim of my analysis and,
+<p>Afterwards I thought which one could be the aim of my analysis and,
 watching this year MSI (Mid Season Invitational), it came to my mind the
 possibility to analyze how much impact have first Blood, first Dragon,
 first Baron Nashor and game side (blue or red) on the victory. Watching
@@ -1661,7 +1661,7 @@ been used in that three years.</p>
 </div>
 <div id="project-development" class="section level2">
 <h2>Project development</h2>
-<p>First of all, I imported all the libraries that i will need and all
+<p>First of all, I imported all the libraries that I needed and all
 the datasets. Then I used the command <strong>View</strong> to see how
 the datasets are organised. The datasets are saved in this <a href="https://drive.google.com/drive/folders/1wfZYNIUWGCITyLbWlMhRsVFUxigodNuY?usp=sharing">Google
 Drive Directory</a></p>
@@ -1700,7 +1700,7 @@ dataset: I chose the table <em>matchinfo</em> as base because it was the
 table with the most number of variables that I needed and the least
 number of variables that I had to remove. So I used
 <strong>select</strong> to maintain only the columns I wanted,
-furthermore I create a new column named <em>Result</em> that has the
+furthermore I created a new column named <em>Result</em> that has the
 same value of <em>bResult</em> and it symbolizes the winning team (if
 blue team won it has value 1, instead if red team won the value is
 0).</p>
@@ -1716,7 +1716,7 @@ interestingData</code></pre>
 </div>
 <div id="working-on-other-tables" class="section level3">
 <h3>Working on other tables</h3>
-<p>Once that I cleaned the <em>mathinfo</em> table and put it in the new
+<p>Once that I cleaned the <em>matchinfo</em> table and put it in the new
 one called <em>interestingData</em>, it was time to tidy the other
 tables to let them fit in the base one.</p>
 <div id="bans-table" class="section level4">
@@ -1913,8 +1913,8 @@ interestingData</code></pre>
 <p>After I put in order data, it’s time to start doing the analysis. The
 first thing I analysed is how much influence has the First Blood on the
 victory. To do this I use a <strong>for</strong> to count how many times
-the team that drawned the First Blood also won the game. The result is
-expressed both in th absolute value and percentage.</p>
+the team that made the First Blood also won the game. The result is
+expressed both in the absolute value and percentage.</p>
 <pre class="r"><code>conta = 0;
 for(i in 1:nrow(interestingData)) {
   if(interestingData$FirstBlood[[i]]==&quot;Blue&quot; &amp;&amp; interestingData$Result[[i]]==1) {
@@ -1936,7 +1936,7 @@ games of League of Legends.</p>
 <div id="first-drake-and-baron-impact" class="section level3">
 <h3>First Drake and Baron impact</h3>
 <p>Let’s analyse the impact of First Drake and First Baron on the
-victory. The operations are the same of the ones for the First
+victory. The operations are the same ones for the First
 Blood.</p>
 <pre class="r"><code>conta = 0;
 for(i in 1:nrow(interestingData)) {
@@ -1973,16 +1973,16 @@ is a buff that a team obtains after it slays four Drakes, so even if one
 team doesn’t take the First one it’s not a problem because there are
 other Drakes that can be slayed every 6 minutes. On the other hand there
 is the Baron that has a huge impact on the victory (79%). That was
-easily predictable because the Baron is a monster that gives an iportant
+easily predictable because the Baron is a monster that gives an important
 buff to the team that kills it and it spawns later in the game (the
-first one spawn at minute 20). These two aspects, combined to the
+first one spawns at minute 20). These two aspects, combined to the
 difficulty of taking down this objective, make teams wait until the
 moment that they have a big advantage before they slay the Baron.
 Waiting so much let the difference between the teams grow and when the
 Baron is dead, the game is already in one team’s hands.</p>
 </div>
 <div id="game-side-impact" class="section level3">
-<h3>game side impact</h3>
+<h3>Game side impact</h3>
 <p>The next step is to analyse how much impact has the game side on the
 victory and on the other variables (First Blood, First Dragon and First
 Baron). To do this I will count, using <strong>for</strong> again, how
@@ -1990,7 +1990,7 @@ many times variables previously announced have the value <em>Blue</em>
 (or <em>1</em> in the case of the First Blood). Then the results for the
 red side will be complementary. I’m going to expect a bigger impact of
 the blue side because there has always been said that the team that
-plays from the blue side is benefites, even if the the advantage isn’t
+plays from the blue side is benefited, even if the advantage isn’t
 huge.</p>
 <pre class="r"><code>conta = 0;
 for(i in 1:nrow(interestingData)) {
@@ -2006,7 +2006,7 @@ percent</code></pre>
 <pre><code>## [1] 4146</code></pre>
 <p>In line with what I expected the blue side has a victory percentage
 little bigger than the red one (54,4% vs 45,6%). Probably the advantage
-is determined by the draft phase (the one when player choose their
+is determined by the draft phase (the one when players choose their
 champions) because the blue team starts banning and picking before the
 red one and can choose or ban the most powerful champions.</p>
 <pre class="r"><code>conta = 0;
@@ -2045,7 +2045,7 @@ percent</code></pre>
 <p>Contrary to the prediction, the First Dragon is mostly killed by the
 red team (53% red team vs 47% blue team). This nearly surprises me also
 seen the impact that the first Drake has on the victory, but considering
-the counter-pick stuff that i explained before this result becomes more
+the counter-pick stuff that I explained before this result becomes more
 understandable.</p>
 <pre class="r"><code>conta = 0;
 for(i in 1:nrow(interestingData)) {
@@ -2113,7 +2113,7 @@ nomi=nomi[-1]</code></pre>
 <p>After that I did the same thing with the champions that have been
 banned and then I made a cross check to make sure that the array that
 will become a column of a new table has all the champions that have made
-an appearance. Then I create the new table <em>champions</em> and I add
+an appearance. Then I created the new table <em>champions</em> and I added
 the column with the names.</p>
 <pre class="r"><code>ban=&quot;&quot;;
 for(i in 1:nrow(interestingData)) {
@@ -2163,7 +2163,7 @@ champions = data.frame(nomi)
 <p>Once I created the table, I created two new columns
 (<em>pickRate</em> and <em>banRate</em>) in which I put the percentage
 of pick and ban. To make that appen I created a function that, given a
-value and a column, return how many times that value is present in that
+value and a column, returns how many times that value is present in that
 column.</p>
 <pre class="r"><code>checkFreq = function (x, y) {
   conta=0;
@@ -2211,7 +2211,7 @@ champions = mutate(champions, banRate=banrate)</code></pre>
 <p>At this point the only thing that I hadn’t done yet is to create the
 column <em>presence</em> in which there is the percentage of total
 presence (pick rate + ban rate) of the champion in the games of the
-period in analysis. After I created the column, I also sort the table in
+period in analysis. After I created the column, I also sorted the table in
 descending order of <em>presence</em>.</p>
 <pre class="r"><code>champions = champions %&gt;%
   mutate(presence=pickRate+banRate) %&gt;%
@@ -2242,7 +2242,7 @@ let go through only the lines that has a value of presence higher than
 for more than 254 games per year, which is a insignificant number of
 games given that the total number of game per year is 2540. The new
 table has only 64 lines, which means that only 64 champions reach that
-value of presence, against the 140 lines of the originaty
+value of presence, against the 140 lines of the original
 <em>champions</em> table.</p>
 <pre class="r"><code>mostSeen = filter(champions, presence&gt;10)
 mostSeen</code></pre>
@@ -2255,18 +2255,18 @@ mostSeen</code></pre>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
 <p>In conclusion, these analysis shows how the professional League of
-Legends has some “rules” all his and how many things have to be studied
+Legends games have some “rules” all their and how many things have to be studied
 in this world. In particular, the results have shown that the blue side
 has a small advantage on the victory, but on the other hand the red team
 has a small advantage on the objectives and First Blood. Furthermore the
 team that kills first has an higher probability to win like the team
 that slays the First Dragon. The team that takes down the First Baron
-has statistically an advantage that will lead them to win the game in
+has statistically an advantage that will leads it to win the game in
 the 80% of the times. Last but not least, the second analysis has shown
 that pro players tend to focus the practice to a very poor pool of
 champions, considering the large amount of champions that Riot created
-for league of Legends during the years. Moreover the result point out
-how difficult is for the proplayer to change their habits and learn some
+for League of Legends during the years. Moreover the result point out
+how difficult is for pro players to change their habits and learn some
 new champions to adapt the gameplay to the changes of the meta.</p>
 </div>
 </div>
