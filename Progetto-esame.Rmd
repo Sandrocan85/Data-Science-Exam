@@ -562,7 +562,7 @@ This means that even if the analysis has a pool of 7620 games divided into three
 Even though there are all 140 champions that League had in that period, most of them have a percentage of presence very very low.
 To test that I created a new table *mostSeen* that is simply the table *champions* with a filter on the presence.
 The filter let go through only the lines that has a value of presence higher than 10.
-This value means that the champions in the new table have been seen for more than 254 games per year, wish is a insignificant number of games given that the total number of game sper year is 2540.
+This value means that the champions in the new table have been seen for more than 254 games per year, which is a insignificant number of games given that the total number of game per year is 2540.
 The new table has only 64 lines, which means that only 64 champions reach that value of presence, against the 140 lines of the originaty *champions* table.
 
 ```{r echo=TRUE}
